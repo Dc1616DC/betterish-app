@@ -2,50 +2,78 @@ import React, { useState, useEffect } from 'react';
 import { ViewState, Task, UserStats, ChatMessage, UserProfile, DailyTip } from './types';
 import { INITIAL_TASKS, KID_STAGES } from './constants';
 import { generateDailyTip, extractActionsFromChat } from './services/geminiService';
+import { db } from './instant.config';
+import Auth from './components/Auth';
 import NavBar from './components/NavBar';
 import Dashboard from './components/Dashboard';
 import TaskList from './components/TaskList';
 import ChatInterface from './components/Chat';
 import Settings from './components/Settings';
 
-const STORAGE_KEY = 'betterish_data_v2';
-
 function App() {
+  // Check auth state
+  const { isLoading, user, error } = db.useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-dad-bg flex items-center justify-center">
+        <div className="text-dad-primary text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error || !user) {
+    return <Auth />;
+  }
+
+  return <AuthenticatedApp userId={user.id} />;
+}
+
+function AuthenticatedApp({ userId }: { userId: string }) {
   const [view, setView] = useState<ViewState>(ViewState.DASHBOARD);
-
-  // State
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [stats, setStats] = useState<UserStats>({ streak: 1, tasksCompleted: 0, lastActive: Date.now(), level: 'Rookie Dad' });
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatDraft, setChatDraft] = useState<string>('');
-
-  // New State for V2
-  const [profile, setProfile] = useState<UserProfile>({ name: '', kidName: '', kidStage: KID_STAGES[1] });
-  const [dailyTip, setDailyTip] = useState<DailyTip | null>(null);
-
-  // Track context for AI Chat
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
-  // Load Data
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
-      setTasks(data.tasks || INITIAL_TASKS);
-      setStats(data.stats || stats);
-      setChatHistory(data.chatHistory || []);
-      setProfile(data.profile || { name: '', kidName: '', kidStage: KID_STAGES[1] });
-      setDailyTip(data.dailyTip || null);
-    } else {
-      setTasks(INITIAL_TASKS);
-    }
-  }, []);
+  // Query all data from InstantDB
+  const { data, isLoading, error } = db.useQuery({
+    tasks: {},
+    chatMessages: {},
+    userStats: {},
+    userProfile: {},
+    dailyTips: {},
+  });
 
-  // Save Data
+  // Extract data with defaults
+  const tasks = data?.tasks || [];
+  const chatHistory = data?.chatMessages || [];
+  const statsArray = data?.userStats || [];
+  const profileArray = data?.userProfile || [];
+  const dailyTipsArray = data?.dailyTips || [];
+
+  // Get single records (first match for this user)
+  const stats = statsArray[0] || { id: 'stats-' + userId, streak: 1, tasksCompleted: 0, lastActive: Date.now(), level: 'Rookie Dad' };
+  const profile = profileArray[0] || { id: 'profile-' + userId, name: '', kidName: '', kidStage: KID_STAGES[1] };
+  const dailyTip = dailyTipsArray[0] || null;
+
+  // Initialize data on first load
   useEffect(() => {
-    const data = { tasks, stats, chatHistory, profile, dailyTip };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [tasks, stats, chatHistory, profile, dailyTip]);
+    if (!isLoading && tasks.length === 0) {
+      // Add initial tasks
+      INITIAL_TASKS.forEach(task => {
+        db.transact(db.tx.tasks[task.id].update(task));
+      });
+    }
+
+    if (!isLoading && statsArray.length === 0) {
+      // Initialize stats
+      db.transact(db.tx.userStats[stats.id].update(stats));
+    }
+
+    if (!isLoading && profileArray.length === 0) {
+      // Initialize profile
+      db.transact(db.tx.userProfile[profile.id].update(profile));
+    }
+  }, [isLoading]);
 
   // Daily Tip Logic
   useEffect(() => {
@@ -53,11 +81,18 @@ function App() {
       const today = new Date().toISOString().split('T')[0];
       if (!dailyTip || dailyTip.date !== today) {
         const tipText = await generateDailyTip(profile);
-        setDailyTip({ date: today, text: tipText, category: 'development' });
+        const newTip = {
+          id: 'tip-' + today,
+          date: today,
+          text: tipText,
+          category: 'development' as const,
+          userId
+        };
+        db.transact(db.tx.dailyTips[newTip.id].update(newTip));
       }
     };
-    checkDailyTip();
-  }, [profile.kidStage, dailyTip]);
+    if (!isLoading) checkDailyTip();
+  }, [profile.kidStage, dailyTip, isLoading]);
 
   // Task Logic
   const addTask = (title: string, category: 'quick' | 'project' | 'survival' = 'quick') => {
@@ -68,77 +103,73 @@ function App() {
       createdAt: Date.now(),
       category
     };
-    setTasks(prev => [newTask, ...prev]);
+    db.transact(db.tx.tasks[newTask.id].update(newTask));
     return newTask.id;
   };
 
-  // Helper to create a project with pre-filled subtasks
   const addProject = (title: string, subtasks: string[]) => {
-     const parentId = addTask(title, 'project');
-     addSubTasks(parentId, subtasks);
+    const parentId = addTask(title, 'project');
+    addSubTasks(parentId, subtasks);
   };
 
   const toggleTask = (id: string) => {
-    // Find task first to avoid double-counting
     const task = tasks.find(t => t.id === id);
     const isSubtask = !task;
 
     if (task && !isSubtask) {
-      // Update stats BEFORE updating tasks
-      if (!task.completed) {
-        setStats(s => ({ ...s, tasksCompleted: s.tasksCompleted + 1 }));
-      } else {
-        setStats(s => ({ ...s, tasksCompleted: Math.max(0, s.tasksCompleted - 1) }));
+      // Update stats
+      const newStats = {
+        ...stats,
+        tasksCompleted: task.completed ? Math.max(0, stats.tasksCompleted - 1) : stats.tasksCompleted + 1
+      };
+      db.transact(db.tx.userStats[stats.id].update(newStats));
+
+      // Update task
+      db.transact(db.tx.tasks[id].update({ completed: !task.completed }));
+    } else {
+      // Handle subtask
+      const parentTask = tasks.find(t => t.subtasks?.some(st => st.id === id));
+      if (parentTask && parentTask.subtasks) {
+        const updatedSubtasks = parentTask.subtasks.map(st =>
+          st.id === id ? { ...st, completed: !st.completed } : st
+        );
+        db.transact(db.tx.tasks[parentTask.id].update({ subtasks: updatedSubtasks }));
       }
     }
-
-    // Update task state
-    setTasks(prev => {
-      const mainTask = prev.find(t => t.id === id);
-      if (!mainTask) {
-        // Check subtasks
-        return prev.map(t => {
-          if (t.subtasks) {
-            return {
-              ...t,
-              subtasks: t.subtasks.map(st => st.id === id ? { ...st, completed: !st.completed } : st)
-            };
-          }
-          return t;
-        });
-      }
-
-      return prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
-    });
   };
 
   const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
+    db.transact(db.tx.tasks[id].delete());
   };
 
   const addSubTasks = (parentId: string, titles: string[]) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id !== parentId) return t;
+    const parentTask = tasks.find(t => t.id === parentId);
+    if (!parentTask) return;
 
-      const subtasks: Task[] = titles.map((title, idx) => ({
-        id: `${parentId}_sub_${idx}_${Date.now()}`,
-        title,
-        completed: false,
-        createdAt: Date.now(),
-        category: 'quick'
-      }));
-
-      return { ...t, isBrokenDown: true, isExpanded: true, subtasks: [...(t.subtasks || []), ...subtasks] };
+    const subtasks: Task[] = titles.map((title, idx) => ({
+      id: `${parentId}_sub_${idx}_${Date.now()}`,
+      title,
+      completed: false,
+      createdAt: Date.now(),
+      category: 'quick'
     }));
+
+    db.transact(
+      db.tx.tasks[parentId].update({
+        isBrokenDown: true,
+        isExpanded: true,
+        subtasks: [...(parentTask.subtasks || []), ...subtasks]
+      })
+    );
   };
 
   const toggleTaskExpansion = (id: string) => {
-    setTasks(prev => prev.map(t =>
-      t.id === id ? { ...t, isExpanded: !t.isExpanded } : t
-    ));
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      db.transact(db.tx.tasks[id].update({ isExpanded: !task.isExpanded }));
+    }
   };
 
-  // Ask Dad AI Logic
   const handleAskAI = (taskTitle: string, taskId?: string) => {
     setChatDraft(`I'm stuck on this task: "${taskTitle}". Any tips?`);
     setActiveTaskId(taskId || null);
@@ -150,75 +181,113 @@ function App() {
     if (!extractedData || extractedData.subtasks.length === 0) return 0;
 
     if (activeTaskId) {
-      // Context Exists: Add steps as subtasks to the active project
       addSubTasks(activeTaskId, extractedData.subtasks);
     } else {
-      // No Context: Create a new "Project" task
       addProject(extractedData.mainTask || "New Project", extractedData.subtasks);
     }
     return extractedData.subtasks.length;
   };
 
   const addMessage = (msg: ChatMessage) => {
-    setChatHistory(prev => [...prev, msg]);
+    db.transact(db.tx.chatMessages[msg.id].update(msg));
   };
 
-  const resetData = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    window.location.reload();
+  const updateProfile = (newProfile: UserProfile) => {
+    db.transact(db.tx.userProfile[profile.id].update(newProfile));
+  };
+
+  const resetData = async () => {
+    // Delete all user data
+    tasks.forEach(task => db.transact(db.tx.tasks[task.id].delete()));
+    chatHistory.forEach(msg => db.transact(db.tx.chatMessages[msg.id].delete()));
+    if (dailyTip) db.transact(db.tx.dailyTips[dailyTip.id].delete());
+
+    // Reset stats
+    db.transact(db.tx.userStats[stats.id].update({
+      streak: 1,
+      tasksCompleted: 0,
+      lastActive: Date.now(),
+      level: 'Rookie Dad'
+    }));
   };
 
   const activeTaskTitle = activeTaskId ? tasks.find(t => t.id === activeTaskId)?.title : undefined;
 
   const renderView = () => {
-    switch(view) {
+    switch (view) {
       case ViewState.DASHBOARD:
-        return <Dashboard
-          stats={stats}
-          tasks={tasks}
-          dailyTip={dailyTip}
-          profile={profile}
-          onQuickTaskAdd={(t) => addTask(t, 'quick')}
-          onNavigateToTasks={() => setView(ViewState.TASKS)}
-        />;
+        return (
+          <Dashboard
+            stats={stats}
+            tasks={tasks}
+            dailyTip={dailyTip}
+            profile={profile}
+            onQuickTaskAdd={(t) => addTask(t, 'quick')}
+            onNavigateToTasks={() => setView(ViewState.TASKS)}
+          />
+        );
       case ViewState.TASKS:
-        return <TaskList
-          tasks={tasks}
-          toggleTask={toggleTask}
-          addTask={addTask}
-          deleteTask={deleteTask}
-          addSubTasks={addSubTasks}
-          toggleTaskExpansion={toggleTaskExpansion}
-          onAskAI={handleAskAI}
-          kidStage={profile.kidStage}
-        />;
+        return (
+          <TaskList
+            tasks={tasks}
+            toggleTask={toggleTask}
+            addTask={addTask}
+            deleteTask={deleteTask}
+            addSubTasks={addSubTasks}
+            toggleTaskExpansion={toggleTaskExpansion}
+            onAskAI={handleAskAI}
+            kidStage={profile.kidStage}
+          />
+        );
       case ViewState.CHAT:
-        return <ChatInterface
-          messages={chatHistory}
-          addMessage={addMessage}
-          initialInput={chatDraft}
-          onClearInitialInput={() => setChatDraft('')}
-          onConvertToTasks={handleConvertChatToTasks}
-          activeTaskTitle={activeTaskTitle}
-        />;
+        return (
+          <ChatInterface
+            messages={chatHistory}
+            addMessage={addMessage}
+            initialInput={chatDraft}
+            onClearInitialInput={() => setChatDraft('')}
+            onConvertToTasks={handleConvertChatToTasks}
+            activeTaskTitle={activeTaskTitle}
+          />
+        );
       case ViewState.SETTINGS:
-        return <Settings
-          stats={stats}
-          profile={profile}
-          updateProfile={setProfile}
-          resetData={resetData}
-        />;
+        return (
+          <Settings
+            stats={stats}
+            profile={profile}
+            updateProfile={updateProfile}
+            resetData={resetData}
+          />
+        );
       default:
-        return <Dashboard
-           stats={stats}
-           tasks={tasks}
-           dailyTip={dailyTip}
-           profile={profile}
-           onQuickTaskAdd={(t) => addTask(t)}
-           onNavigateToTasks={() => setView(ViewState.TASKS)}
-        />;
+        return (
+          <Dashboard
+            stats={stats}
+            tasks={tasks}
+            dailyTip={dailyTip}
+            profile={profile}
+            onQuickTaskAdd={(t) => addTask(t)}
+            onNavigateToTasks={() => setView(ViewState.TASKS)}
+          />
+        );
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-dad-bg flex items-center justify-center">
+        <div className="text-dad-primary text-xl">Loading your data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-dad-bg flex items-center justify-center">
+        <div className="text-red-400 text-xl">Error loading data: {error.message}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-dad-bg text-dad-text font-sans antialiased selection:bg-dad-primary selection:text-white">

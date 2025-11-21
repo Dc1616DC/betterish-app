@@ -1,6 +1,7 @@
 import { UserProfile, UserStats } from '../types';
 import { KID_STAGES } from '../constants';
-import { Save, Trash2 } from 'lucide-react';
+import { Save, Trash2, LogOut } from 'lucide-react';
+import { auth } from '../instant.config';
 
 interface SettingsProps {
   stats: UserStats;
@@ -80,7 +81,7 @@ export default function Settings({ stats, profile, updateProfile, resetData }: S
             Auto-Saved
           </button>
 
-          <button 
+          <button
             onClick={() => {
                 if(confirm("Reset all data? This cannot be undone.")) {
                     resetData();
@@ -90,6 +91,14 @@ export default function Settings({ stats, profile, updateProfile, resetData }: S
           >
             <Trash2 size={14} />
             Reset All Data
+          </button>
+
+          <button
+            onClick={() => auth.signOut()}
+            className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm py-2 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <LogOut size={14} />
+            Sign Out
           </button>
         </div>
       </div>
