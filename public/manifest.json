@@ -1,0 +1,21 @@
+{
+  "short_name": "Betterish",
+  "name": "Betterish: Dad Helper",
+  "icons": [
+    {
+      "src": "https://api.iconify.design/noto:bearded-person.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    },
+    {
+      "src": "https://api.iconify.design/noto:bearded-person.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1a1b1e",
+  "background_color": "#1a1b1e",
+  "orientation": "portrait"
+}
