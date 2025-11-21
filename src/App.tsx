@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ViewState, Task, UserStats, ChatMessage, UserProfile, DailyTip } from './types';
+import { useState, useEffect } from 'react';
+import { ViewState, Task, ChatMessage, UserProfile } from './types';
 import { INITIAL_TASKS, KID_STAGES } from './constants';
 import { generateDailyTip, extractActionsFromChat } from './services/geminiService';
 import { db } from './instant.config';
@@ -44,11 +44,11 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   });
 
   // Extract data with defaults
-  const tasks = data?.tasks || [];
-  const chatHistory = data?.chatMessages || [];
-  const statsArray = data?.userStats || [];
-  const profileArray = data?.userProfile || [];
-  const dailyTipsArray = data?.dailyTips || [];
+  const tasks = (data?.tasks || []) as Task[];
+  const chatHistory = (data?.chatMessages || []) as ChatMessage[];
+  const statsArray = (data?.userStats || []) as any[];
+  const profileArray = (data?.userProfile || []) as any[];
+  const dailyTipsArray = (data?.dailyTips || []) as any[];
 
   // Get single records (first match for this user)
   const stats = statsArray[0] || { id: 'stats-' + userId, streak: 1, tasksCompleted: 0, lastActive: Date.now(), level: 'Rookie Dad' };
@@ -128,9 +128,9 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       db.transact(db.tx.tasks[id].update({ completed: !task.completed }));
     } else {
       // Handle subtask
-      const parentTask = tasks.find(t => t.subtasks?.some(st => st.id === id));
+      const parentTask = tasks.find((t: Task) => t.subtasks?.some((st: Task) => st.id === id));
       if (parentTask && parentTask.subtasks) {
-        const updatedSubtasks = parentTask.subtasks.map(st =>
+        const updatedSubtasks = parentTask.subtasks.map((st: Task) =>
           st.id === id ? { ...st, completed: !st.completed } : st
         );
         db.transact(db.tx.tasks[parentTask.id].update({ subtasks: updatedSubtasks }));
@@ -198,8 +198,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
 
   const resetData = async () => {
     // Delete all user data
-    tasks.forEach(task => db.transact(db.tx.tasks[task.id].delete()));
-    chatHistory.forEach(msg => db.transact(db.tx.chatMessages[msg.id].delete()));
+    tasks.forEach((task: Task) => db.transact(db.tx.tasks[task.id].delete()));
+    chatHistory.forEach((msg: ChatMessage) => db.transact(db.tx.chatMessages[msg.id].delete()));
     if (dailyTip) db.transact(db.tx.dailyTips[dailyTip.id].delete());
 
     // Reset stats
