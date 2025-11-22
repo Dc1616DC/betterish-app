@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Task } from '../types';
-import { breakDownTaskAI } from '../services/geminiService';
+import { breakDownTaskAI, processAudioForTasks } from '../services/geminiService';
+import { generateCalendarEvent } from '../utils/calendar';
 import TaskInspiration from './TaskInspiration';
 
 interface TaskListProps {
@@ -18,12 +19,57 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
   const [newItem, setNewItem] = useState('');
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [showInspiration, setShowInspiration] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.trim()) return;
     addTask(newItem);
     setNewItem('');
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/mp3' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = (reader.result as string).split(',')[1];
+          setIsProcessingAudio(true);
+          const extractedTasks = await processAudioForTasks(base64Audio);
+          extractedTasks.forEach(task => addTask(task));
+          setIsProcessingAudio(false);
+        };
+        // Stop all tracks to turn off microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+      alert("Could not access microphone. Please check permissions.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
   const handleBreakdown = async (task: Task) => {
@@ -48,7 +94,18 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
         </div>
         <div className="mb-6">
           <form onSubmit={handleAdd} className="flex gap-2">
-            <input type="text" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Add something..." className="flex-1 bg-dad-card border border-gray-700 text-white rounded-xl px-4 py-4 focus:outline-none focus:border-dad-primary placeholder-gray-500 shadow-sm" />
+            <button
+              type="button"
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+              disabled={isProcessingAudio}
+              className={`px-4 rounded-xl font-bold text-xl transition-all active:scale-95 flex items-center justify-center border ${isRecording ? 'bg-red-500 text-white border-red-600 animate-pulse' : isProcessingAudio ? 'bg-gray-700 border-gray-600 opacity-50 cursor-wait' : 'bg-dad-card border-gray-700 text-dad-primary hover:border-dad-primary'}`}
+            >
+               {isRecording ? '🛑' : isProcessingAudio ? '⏳' : '🎤'}
+            </button>
+            <input type="text" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder={isRecording ? "Listening..." : isProcessingAudio ? "Processing..." : "Add something..."} className="flex-1 bg-dad-card border border-gray-700 text-white rounded-xl px-4 py-4 focus:outline-none focus:border-dad-primary placeholder-gray-500 shadow-sm" disabled={isRecording || isProcessingAudio} />
             <button type="submit" className="bg-dad-primary text-white font-bold rounded-xl px-5 py-3 active:scale-95 transition-transform shadow-lg shadow-orange-900/20">+</button>
           </form>
         </div>
@@ -69,6 +126,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
                         {loadingId === task.id ? "..." : task.isBrokenDown ? (task.isExpanded ? "▲" : "▼") : "☰"}
                       </button>
                       <button onClick={() => onAskAI(task.title, task.id)} className="p-2 text-dad-primary hover:bg-gray-700/50 rounded transition-colors">💬</button>
+                      <button onClick={() => generateCalendarEvent(task)} className="p-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded transition-colors" title="Add to Calendar">📅</button>
                     </>
                   )}
                   <button onClick={() => deleteTask(task.id)} className="p-2 text-dad-secondary hover:text-red-400 rounded transition-colors">×</button>

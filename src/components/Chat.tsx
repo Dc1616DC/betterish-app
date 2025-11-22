@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage } from '../types';
 import { createDadChat, sendMessageToDadAI } from '../services/geminiService';
 import { Chat } from "@google/genai";
@@ -30,9 +31,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, addMessage, ini
     const userText = input;
     setInput('');
     setLoading(true);
-    addMessage({ id: Date.now().toString(), role: 'user', text: userText, timestamp: Date.now() });
+    addMessage({ id: uuidv4(), role: 'user', text: userText, timestamp: Date.now() });
     const aiResponse = await sendMessageToDadAI(chatSessionRef.current, userText);
-    addMessage({ id: (Date.now() + 1).toString(), role: 'model', text: aiResponse, timestamp: Date.now() });
+    addMessage({ id: uuidv4(), role: 'model', text: aiResponse, timestamp: Date.now() });
     setLoading(false);
   };
 

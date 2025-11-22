@@ -9,6 +9,7 @@ interface DashboardProps {
   profile: UserProfile;
   onQuickTaskAdd: (title: string) => void;
   onNavigateToTasks: () => void;
+  onAgentReview: () => void;
 }
 
 const DailyIntelModal = ({ tip, profile, onClose }: { tip: DailyTip, profile: UserProfile, onClose: () => void }) => (
@@ -28,7 +29,7 @@ const DailyIntelModal = ({ tip, profile, onClose }: { tip: DailyTip, profile: Us
   </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, onQuickTaskAdd, onNavigateToTasks }) => {
+const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, onQuickTaskAdd, onNavigateToTasks, onAgentReview }) => {
   const [showIntel, setShowIntel] = useState(false);
   const [randomWins, setRandomWins] = useState<string[]>([]);
 
@@ -111,13 +112,25 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, 
              <div className="text-xs text-gray-500">Manage the chaos</div>
            </div>
          </button>
-         <div className="bg-dad-card/50 p-5 rounded-3xl border border-gray-800 flex flex-col justify-between h-28 opacity-75">
-           <span className="text-2xl">😴</span>
-           <div>
-             <div className="font-bold text-lg text-gray-400">Rest Mode</div>
-             <div className="text-xs text-gray-600">Permission to chill.</div>
+         {activeTaskCount >= 5 ? (
+           <button onClick={onAgentReview} className="bg-dad-card hover:bg-gray-800 text-white p-5 rounded-3xl border border-gray-700 transition-all active:scale-95 text-left flex flex-col justify-between h-28 group">
+             <div className="flex justify-between items-start">
+               <span className="text-2xl group-hover:rotate-12 transition-transform">🚀</span>
+             </div>
+             <div>
+               <div className="font-bold text-lg">Get Sh*t Done</div>
+               <div className="text-xs text-gray-500">Sort & Prioritize</div>
+             </div>
+           </button>
+         ) : (
+           <div className="bg-dad-card/50 p-5 rounded-3xl border border-gray-800 flex flex-col justify-between h-28 opacity-75">
+             <span className="text-2xl">✅</span>
+             <div>
+               <div className="font-bold text-lg text-gray-400">Under Control</div>
+               <div className="text-xs text-gray-600">Keep it up, Dad.</div>
+             </div>
            </div>
-         </div>
+         )}
       </div>
 
       <div>

@@ -10,6 +10,9 @@ import Dashboard from './components/Dashboard';
 import TaskList from './components/TaskList';
 import ChatInterface from './components/Chat';
 import Settings from './components/Settings';
+import AgentPriorityModal from './components/AgentPriorityModal';
+import { analyzePriorities } from './services/geminiService';
+import { TaskAnalysis } from './types';
 
 function App() {
   // Check auth state
@@ -35,6 +38,11 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [chatDraft, setChatDraft] = useState<string>('');
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+  
+  // Agent Modal State
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+  const [agentAnalysis, setAgentAnalysis] = useState<TaskAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Query all data from InstantDB
   const { data, isLoading, error } = db.useQuery({
@@ -227,6 +235,28 @@ function AuthenticatedApp({ userId }: { userId: string }) {
 
   const activeTaskTitle = activeTaskId ? tasks.find(t => t.id === activeTaskId)?.title : undefined;
 
+  const handleAgentReview = async () => {
+    setIsAgentModalOpen(true);
+    setIsAnalyzing(true);
+    const analysis = await analyzePriorities(tasks);
+    setAgentAnalysis(analysis);
+    setIsAnalyzing(false);
+  };
+
+  const handleApplyPriorities = (priorityIds: string[], staleIdsToDelete: string[]) => {
+    // 1. Handle Priorities: Move them to top (we can't reorder easily in this DB setup without a 'order' field, 
+    // so for now we will tag them as 'survival' which is our de-facto high priority)
+    priorityIds.forEach(id => {
+      db.transact(db.tx.tasks[id].update({ category: 'survival' }));
+    });
+
+    // 2. Handle Stale: Delete or move to a "Someday" list (for now, we'll just delete as per modal text "Hide/Someday")
+    // Ideally we would add a 'status' field like 'backlog', but let's just remove them to declutter for MVP
+    staleIdsToDelete.forEach(id => {
+      db.transact(db.tx.tasks[id].delete());
+    });
+  };
+
   const renderView = () => {
     switch (view) {
       case ViewState.DASHBOARD:
@@ -238,6 +268,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
             profile={profile}
             onQuickTaskAdd={(t) => addTask(t, 'quick')}
             onNavigateToTasks={() => setView(ViewState.TASKS)}
+            onAgentReview={handleAgentReview}
           />
         );
       case ViewState.TASKS:
@@ -282,6 +313,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
             profile={profile}
             onQuickTaskAdd={(t) => addTask(t)}
             onNavigateToTasks={() => setView(ViewState.TASKS)}
+            onAgentReview={handleAgentReview}
           />
         );
     }
@@ -309,6 +341,15 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         {renderView()}
       </div>
       <NavBar currentView={view} setView={setView} />
+      
+      <AgentPriorityModal 
+        isOpen={isAgentModalOpen}
+        onClose={() => setIsAgentModalOpen(false)}
+        tasks={tasks}
+        analysis={agentAnalysis}
+        isLoading={isAnalyzing}
+        onApplyPriorities={handleApplyPriorities}
+      />
     </div>
   );
 }

@@ -41,3 +41,8 @@ export interface DailyTip {
   text: string;
   category: 'development' | 'partner' | 'sanity';
 }
+
+export interface TaskAnalysis {
+  priorities: { id: string; reason: string }[];
+  stale: { id: string; reason: string }[];
+}

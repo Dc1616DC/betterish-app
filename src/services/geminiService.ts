@@ -134,3 +134,74 @@ Return ONLY the tip text.`;
     return BACKUP_TIPS[Math.floor(Math.random() * BACKUP_TIPS.length)];
   }
 };
+
+export const analyzePriorities = async (tasks: any[]): Promise<{ priorities: { id: string; reason: string }[]; stale: { id: string; reason: string }[] }> => {
+  try {
+    const simplifiedTasks = tasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      ageDays: Math.floor((Date.now() - t.createdAt) / (1000 * 60 * 60 * 24))
+    }));
+
+    const prompt = `You are a "Dad Strategy Agent". Help prioritize this to-do list.
+    
+Tasks: ${JSON.stringify(simplifiedTasks)}
+
+1. Identify up to 3 "High Priority" tasks. Look for:
+   - Urgent words (Call, Schedule, Fix, Deadline, Bill)
+   - Health/Kids/Safety items
+   - Tasks that are getting old (> 3 days) but look important.
+   
+2. Identify up to 3 "Stale" tasks. Look for:
+   - Tasks > 7 days old
+   - Vague or non-essential items ("Research x", "Think about y")
+   
+Return JSON ONLY:
+{
+  "priorities": [{ "id": "...", "reason": "Brief reason why" }],
+  "stale": [{ "id": "...", "reason": "Brief reason why" }]
+}`;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME, contents: prompt, config: { responseMimeType: "application/json", safetySettings }
+    });
+    
+    const text = response.text;
+    if (!text) return { priorities: [], stale: [] };
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Analysis failed", error);
+    return { priorities: [], stale: [] };
+  }
+};
+
+export const processAudioForTasks = async (audioBase64: string): Promise<string[]> => {
+  try {
+    const prompt = `Listen to this audio note from a dad. Extract the tasks he mentioned.
+    
+    Return ONLY a JSON array of strings.
+    Example: ["Buy milk", "Fix the sink"]`;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: "audio/mp3", data: audioBase64 } }
+          ]
+        }
+      ],
+      config: { responseMimeType: "application/json", safetySettings }
+    });
+
+    const text = response.text;
+    if (!text) return [];
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch (error) {
+    console.error("Audio processing failed", error);
+    return [];
+  }
+};
