@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Task } from '../types';
 import { breakDownTaskAI, processAudioForTasks } from '../services/geminiService';
-import { generateCalendarEvent } from '../utils/calendar';
 import TaskInspiration from './TaskInspiration';
 
 interface TaskListProps {
@@ -126,7 +125,6 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
                         {loadingId === task.id ? "..." : task.isBrokenDown ? (task.isExpanded ? "▲" : "▼") : "☰"}
                       </button>
                       <button onClick={() => onAskAI(task.title, task.id)} className="p-2 text-dad-primary hover:bg-gray-700/50 rounded transition-colors">💬</button>
-                      <button onClick={() => generateCalendarEvent(task)} className="p-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded transition-colors" title="Add to Calendar">📅</button>
                     </>
                   )}
                   <button onClick={() => deleteTask(task.id)} className="p-2 text-dad-secondary hover:text-red-400 rounded transition-colors">×</button>

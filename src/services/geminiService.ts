@@ -177,10 +177,15 @@ Return JSON ONLY:
 
 export const processAudioForTasks = async (audioBase64: string): Promise<string[]> => {
   try {
-    const prompt = `Listen to this audio note from a dad. Extract the tasks he mentioned.
+    const prompt = `TRANSCRIPT AND EXTRACT.
+    1.  Listen to this audio.
+    2.  Transcribe exactly what the user wants to do.
+    3.  Return ONLY a JSON array of task strings.
     
-    Return ONLY a JSON array of strings.
-    Example: ["Buy milk", "Fix the sink"]`;
+    If the audio is unclear or empty, return [].
+    If the user mentions multiple things (e.g. "Buy milk and call mom"), split them.
+    
+    Example Response: ["Buy milk", "Call mom"]`;
 
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
@@ -198,10 +203,17 @@ export const processAudioForTasks = async (audioBase64: string): Promise<string[
 
     const text = response.text;
     if (!text) return [];
-    const parsed = JSON.parse(text);
-    return Array.isArray(parsed) ? parsed.map(String) : [];
+    
+    try {
+        const parsed = JSON.parse(text);
+        return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch (jsonError) {
+        // Fallback: If JSON fails, just return the raw text as one big task so the user doesn't lose their thought.
+        return [text.replace(/```json|```/g, '').trim()];
+    }
   } catch (error) {
     console.error("Audio processing failed", error);
-    return [];
+    // Fallback: Return a generic error task so they know it failed
+    return ["Error processing audio. Please type it in."];
   }
 };
