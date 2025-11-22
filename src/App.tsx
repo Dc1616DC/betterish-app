@@ -51,16 +51,17 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const dailyTipsArray = (data?.dailyTips || []) as any[];
 
   // Get single records (first match for this user)
-  const stats = statsArray[0] || { id: 'stats-' + userId, streak: 1, tasksCompleted: 0, lastActive: Date.now(), level: 'Rookie Dad' };
-  const profile = profileArray[0] || { id: 'profile-' + userId, name: '', kidName: '', kidStage: KID_STAGES[1] };
+  const stats = statsArray[0] || { id: db.id(), streak: 1, tasksCompleted: 0, lastActive: Date.now(), level: 'Rookie Dad' };
+  const profile = profileArray[0] || { id: db.id(), name: '', kidName: '', kidStage: KID_STAGES[1] };
   const dailyTip = dailyTipsArray[0] || null;
 
   // Initialize data on first load
   useEffect(() => {
     if (!isLoading && tasks.length === 0) {
-      // Add initial tasks
+      // Add initial tasks with proper UUIDs
       INITIAL_TASKS.forEach(task => {
-        db.transact(db.tx.tasks[task.id].update(task));
+        const taskWithUuid = { ...task, id: db.id() };
+        db.transact(db.tx.tasks[taskWithUuid.id].update(taskWithUuid));
       });
     }
 
@@ -82,7 +83,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if (!dailyTip || dailyTip.date !== today) {
         const tipText = await generateDailyTip(profile);
         const newTip = {
-          id: 'tip-' + today,
+          id: db.id(),
           date: today,
           text: tipText,
           category: 'development' as const,
@@ -91,19 +92,26 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         db.transact(db.tx.dailyTips[newTip.id].update(newTip));
       }
     };
-    if (!isLoading) checkDailyTip();
-  }, [profile.kidStage, dailyTip, isLoading]);
+    if (!isLoading && dailyTipsArray.length === 0) {
+      // Only run if no tips exist yet
+      checkDailyTip();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, userId]);
 
   // Task Logic
   const addTask = (title: string, category: 'quick' | 'project' | 'survival' = 'quick') => {
     const newTask: Task = {
-      id: Date.now().toString(),
+      id: db.id(),
       title,
       completed: false,
       createdAt: Date.now(),
       category
     };
-    db.transact(db.tx.tasks[newTask.id].update(newTask));
+    console.log('Adding task:', newTask);
+    db.transact(db.tx.tasks[newTask.id].update(newTask))
+      .then(() => console.log('Task added successfully'))
+      .catch((error) => console.error('Error adding task:', error));
     return newTask.id;
   };
 
@@ -143,11 +151,11 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   };
 
   const addSubTasks = (parentId: string, titles: string[]) => {
-    const parentTask = tasks.find(t => t.id === parentId);
+    const parentTask = tasks.find((t: Task) => t.id === parentId);
     if (!parentTask) return;
 
-    const subtasks: Task[] = titles.map((title, idx) => ({
-      id: `${parentId}_sub_${idx}_${Date.now()}`,
+    const subtasks: Task[] = titles.map((title) => ({
+      id: db.id(),
       title,
       completed: false,
       createdAt: Date.now(),
