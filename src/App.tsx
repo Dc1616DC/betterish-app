@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { ViewState, Task, ChatMessage, UserProfile } from './types';
 import { INITIAL_TASKS, KID_STAGES } from './constants';
 import { generateDailyTip, extractActionsFromChat } from './services/geminiService';
@@ -33,6 +34,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [view, setView] = useState<ViewState>(ViewState.DASHBOARD);
   const [chatDraft, setChatDraft] = useState<string>('');
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   // Query all data from InstantDB
   const { data, isLoading, error } = db.useQuery({
@@ -51,30 +53,34 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const dailyTipsArray = (data?.dailyTips || []) as any[];
 
   // Get single records (first match for this user)
-  const stats = statsArray[0] || { id: db.id(), streak: 1, tasksCompleted: 0, lastActive: Date.now(), level: 'Rookie Dad' };
-  const profile = profileArray[0] || { id: db.id(), name: '', kidName: '', kidStage: KID_STAGES[1] };
+  const stats = statsArray[0] || { id: uuidv4(), streak: 1, tasksCompleted: 0, lastActive: Date.now(), level: 'Rookie Dad' };
+  const profile = profileArray[0] || { id: uuidv4(), name: '', kidName: '', kidStage: KID_STAGES[1] };
   const dailyTip = dailyTipsArray[0] || null;
 
   // Initialize data on first load
   useEffect(() => {
-    if (!isLoading && tasks.length === 0) {
-      // Add initial tasks with proper UUIDs
-      INITIAL_TASKS.forEach(task => {
-        const taskWithUuid = { ...task, id: db.id() };
-        db.transact(db.tx.tasks[taskWithUuid.id].update(taskWithUuid));
-      });
-    }
+    if (!isLoading && !initialized) {
+      if (tasks.length === 0) {
+        // Add initial tasks with proper UUIDs
+        INITIAL_TASKS.forEach(task => {
+          const taskWithUuid = { ...task, id: uuidv4() };
+          db.transact(db.tx.tasks[taskWithUuid.id].update(taskWithUuid));
+        });
+      }
 
-    if (!isLoading && statsArray.length === 0) {
-      // Initialize stats
-      db.transact(db.tx.userStats[stats.id].update(stats));
-    }
+      if (statsArray.length === 0) {
+        // Initialize stats
+        db.transact(db.tx.userStats[stats.id].update(stats));
+      }
 
-    if (!isLoading && profileArray.length === 0) {
-      // Initialize profile
-      db.transact(db.tx.userProfile[profile.id].update(profile));
+      if (profileArray.length === 0) {
+        // Initialize profile
+        db.transact(db.tx.userProfile[profile.id].update(profile));
+      }
+
+      setInitialized(true);
     }
-  }, [isLoading]);
+  }, [isLoading, initialized, tasks.length, statsArray.length, profileArray.length, stats.id, profile.id]);
 
   // Daily Tip Logic
   useEffect(() => {
@@ -83,7 +89,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if (!dailyTip || dailyTip.date !== today) {
         const tipText = await generateDailyTip(profile);
         const newTip = {
-          id: db.id(),
+          id: uuidv4(),
           date: today,
           text: tipText,
           category: 'development' as const,
@@ -102,7 +108,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   // Task Logic
   const addTask = (title: string, category: 'quick' | 'project' | 'survival' = 'quick') => {
     const newTask: Task = {
-      id: db.id(),
+      id: uuidv4(),
       title,
       completed: false,
       createdAt: Date.now(),
@@ -155,7 +161,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     if (!parentTask) return;
 
     const subtasks: Task[] = titles.map((title) => ({
-      id: db.id(),
+      id: uuidv4(),
       title,
       completed: false,
       createdAt: Date.now(),
