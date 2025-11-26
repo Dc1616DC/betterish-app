@@ -79,16 +79,19 @@ export const extractActionsFromChat = async (text: string): Promise<ExtractedTas
 
 export const generateSmartSuggestions = async (kidAge: string, season: string, context: string): Promise<string[]> => {
   try {
-    const prompt = `You are a tired dad's assistant. Generate 6 quick, actionable tasks (under 15 mins each) for a dad with a ${kidAge} during ${season}.
+    const prompt = `You are a "Dad Strategy Agent". The user has a child aged: ${kidAge}. It is currently ${season}.
+    
+    Generate 6 actionable tasks that make the dad look proactive and competent.
+    
+    CRITICAL PRIORITY:
+    - 2 tasks MUST be specific "Unknown Unknowns" or safety milestones for this exact age (e.g., if 6mo, "Lower crib mattress"; if 3yo, "Check window locks").
+    - 1 task for "Partner Appreciation" (The mental load equalizer).
+    - 1 task for "Home Maintenance" (Seasonal/Safety).
+    - 2 tasks for "Dad Sanity" or bonding.
 
-Mix from these categories:
-- 2 kid-related (development, bonding, activities)
-- 1 household maintenance (quick fixes, organization)
-- 1 partner/relationship (connection, appreciation)
-- 1 personal/self-care (rest, hobbies, health)
-- 1 wild card (anything helpful)
-
-Context: ${context}. Keep tasks realistic for a tired parent. Return ONLY a JSON array of 6 strings.`;
+    Context: ${context}.
+    
+    Return ONLY a JSON array of 6 strings. Keep them short, punchy, and specific.`;
     const response = await ai.models.generateContent({
       model: MODEL_NAME, contents: prompt, config: { responseMimeType: "application/json", safetySettings }
     });
