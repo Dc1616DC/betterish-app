@@ -18,6 +18,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
   const [newItem, setNewItem] = useState('');
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [showInspiration, setShowInspiration] = useState(false);
+  const [sortByPriority, setSortByPriority] = useState(true);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +39,8 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
     // 1. Completed tasks go to bottom
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     
-    // 2. Survival tasks go to top (if not completed)
-    if (!a.completed && !b.completed) {
+    // 2. Survival tasks go to top (ONLY if priority sort is on)
+    if (sortByPriority && !a.completed && !b.completed) {
         if (a.category === 'survival' && b.category !== 'survival') return -1;
         if (b.category === 'survival' && a.category !== 'survival') return 1;
     }
@@ -54,9 +55,17 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
       <div className="flex flex-col h-full p-6 pb-24 animate-fade-in">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white">The List</h2>
-          <button onClick={() => setShowInspiration(true)} className="text-xs bg-dad-card border border-dad-primary/50 text-dad-primary px-3 py-2 rounded-lg hover:bg-dad-primary hover:text-white transition-colors flex items-center gap-1 font-bold">
-             <span>💡 Brainstorm</span>
-           </button>
+          <div className="flex gap-2">
+             <button 
+               onClick={() => setSortByPriority(!sortByPriority)} 
+               className={`text-xs border px-3 py-2 rounded-lg transition-colors flex items-center gap-1 font-bold ${sortByPriority ? 'bg-red-900/20 border-red-500/50 text-red-400' : 'bg-dad-card border-gray-700 text-gray-500 hover:text-white'}`}
+             >
+               <span>{sortByPriority ? '🔥 Priority' : '📋 Normal'}</span>
+             </button>
+             <button onClick={() => setShowInspiration(true)} className="text-xs bg-dad-card border border-dad-primary/50 text-dad-primary px-3 py-2 rounded-lg hover:bg-dad-primary hover:text-white transition-colors flex items-center gap-1 font-bold">
+               <span>💡 Brainstorm</span>
+             </button>
+          </div>
         </div>
         <div className="mb-6">
           <form onSubmit={handleAdd} className="flex gap-2">
