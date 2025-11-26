@@ -11,6 +11,7 @@ import TaskList from './components/TaskList';
 import ChatInterface from './components/Chat';
 import Settings from './components/Settings';
 import AgentPriorityModal from './components/AgentPriorityModal';
+import Onboarding from './components/Onboarding';
 import { analyzePriorities } from './services/geminiService';
 import { TaskAnalysis } from './types';
 
@@ -54,6 +55,9 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [agentAnalysis, setAgentAnalysis] = useState<TaskAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // Onboarding State
+  const [isOnboarding, setIsOnboarding] = useState(false);
 
   // Query all data from InstantDB
   const { data, isLoading, error } = db.useQuery({
@@ -73,7 +77,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
 
   // Get single records (first match for this user)
   const stats = statsArray[0] || { id: uuidv4(), streak: 1, tasksCompleted: 0, lastActive: Date.now(), level: 'Rookie Dad' };
-  const profile = profileArray[0] || { id: uuidv4(), name: '', kidName: '', kidStage: KID_STAGES[1] };
+  const profile = profileArray[0] || { id: uuidv4(), name: '', kidName: '', kidStage: KID_STAGES[1], hasOnboarded: false };
   const dailyTip = dailyTipsArray[0] || null;
 
   // Initialize data on first load
@@ -95,6 +99,10 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if (profileArray.length === 0) {
         // Initialize profile
         db.transact(db.tx.userProfile[profile.id].update(profile));
+        // If it's a new profile, trigger onboarding
+        setIsOnboarding(true);
+      } else if (!profile.hasOnboarded) {
+        setIsOnboarding(true);
       }
 
       setInitialized(true);
@@ -270,6 +278,19 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     setIsAnalyzing(false);
   };
 
+  const handleOnboardingComplete = (data: Partial<UserProfile> & { initialTask?: string }) => {
+    // 1. Update Profile
+    const { initialTask, ...profileData } = data;
+    db.transact(db.tx.userProfile[profile.id].update({ ...profileData, hasOnboarded: true }));
+    
+    // 2. Add Initial Task if provided
+    if (initialTask && initialTask.trim()) {
+      addTask(initialTask, 'quick');
+    }
+
+    setIsOnboarding(false);
+  };
+
   const handleApplyPriorities = (priorityIds: string[], staleIdsToDelete: string[]) => {
     // 1. Handle Priorities: Move them to top (we can't reorder easily in this DB setup without a 'order' field, 
     // so for now we will tag them as 'survival' which is our de-facto high priority)
@@ -364,6 +385,10 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         <div className="text-red-400 text-xl">Error loading data: {error.message}</div>
       </div>
     );
+  }
+
+  if (isOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
   return (

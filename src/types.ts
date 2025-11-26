@@ -35,6 +35,7 @@ export interface UserProfile {
   name: string;
   kidName: string;
   kidStage: string;
+  hasOnboarded?: boolean;
 }
 
 export interface DailyTip {
