@@ -13,8 +13,6 @@ interface DashboardProps {
   sortByPriority: boolean;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, onQuickTaskAdd, onNavigateToTasks, onAgentReview, sortByPriority }) => {
-
 const DailyIntelModal = ({ tip, profile, onClose }: { tip: DailyTip, profile: UserProfile, onClose: () => void }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
     <div className="bg-dad-card p-6 rounded-3xl border border-dad-primary max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
@@ -32,7 +30,7 @@ const DailyIntelModal = ({ tip, profile, onClose }: { tip: DailyTip, profile: Us
   </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, onQuickTaskAdd, onNavigateToTasks, onAgentReview }) => {
+const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, onQuickTaskAdd, onNavigateToTasks, onAgentReview, sortByPriority }) => {
   const [showIntel, setShowIntel] = useState(false);
   const [randomWins, setRandomWins] = useState<string[]>([]);
 
