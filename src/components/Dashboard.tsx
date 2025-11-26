@@ -102,18 +102,44 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, 
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-         <button onClick={onNavigateToTasks} className="bg-dad-card hover:bg-gray-800 text-white p-5 rounded-3xl border border-gray-700 transition-all active:scale-95 text-left flex flex-col justify-between h-28 group">
-           <div className="flex justify-between items-start">
-             <span className="text-2xl group-hover:scale-110 transition-transform">📋</span>
-             {activeTaskCount > 0 && <span className="bg-dad-primary text-white text-xs font-bold px-2 py-1 rounded-full">{activeTaskCount}</span>}
-           </div>
-           <div>
-             <div className="font-bold text-lg">The List</div>
-             <div className="text-xs text-gray-500">Manage the chaos</div>
-           </div>
+         <button onClick={onNavigateToTasks} className="bg-dad-card hover:bg-gray-800 text-white p-5 rounded-3xl border border-gray-700 transition-all active:scale-95 text-left flex flex-col justify-between h-40 group relative overflow-hidden">
+           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-6xl">📋</div>
+           
+           {tasks.filter(t => !t.completed && t.category === 'survival').length > 0 ? (
+             <div className="w-full z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-red-400 uppercase tracking-wider animate-pulse">🔥 Priority</span>
+                </div>
+                <div className="space-y-2">
+                  {tasks
+                    .filter(t => !t.completed && t.category === 'survival')
+                    .slice(0, 3)
+                    .map(t => (
+                      <div key={t.id} className="text-sm font-medium truncate flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                        {t.title}
+                      </div>
+                    ))}
+                    {tasks.filter(t => !t.completed && t.category === 'survival').length > 3 && (
+                      <div className="text-xs text-gray-500 pl-3.5">...and {tasks.filter(t => !t.completed && t.category === 'survival').length - 3} more</div>
+                    )}
+                </div>
+             </div>
+           ) : (
+             <>
+               <div className="flex justify-between items-start z-10">
+                 <span className="text-2xl group-hover:scale-110 transition-transform">📋</span>
+                 {activeTaskCount > 0 && <span className="bg-dad-primary text-white text-xs font-bold px-2 py-1 rounded-full">{activeTaskCount}</span>}
+               </div>
+               <div className="z-10">
+                 <div className="font-bold text-lg">The List</div>
+                 <div className="text-xs text-gray-500">Manage the chaos</div>
+               </div>
+             </>
+           )}
          </button>
          {activeTaskCount >= 5 ? (
-           <button onClick={onAgentReview} className="bg-dad-card hover:bg-gray-800 text-white p-5 rounded-3xl border border-gray-700 transition-all active:scale-95 text-left flex flex-col justify-between h-28 group">
+           <button onClick={onAgentReview} className="bg-dad-card hover:bg-gray-800 text-white p-5 rounded-3xl border border-gray-700 transition-all active:scale-95 text-left flex flex-col justify-between h-40 group">
              <div className="flex justify-between items-start">
                <span className="text-2xl group-hover:rotate-12 transition-transform">🚀</span>
              </div>
@@ -123,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, 
              </div>
            </button>
          ) : (
-           <div className="bg-dad-card/50 p-5 rounded-3xl border border-gray-800 flex flex-col justify-between h-28 opacity-75">
+           <div className="bg-dad-card/50 p-5 rounded-3xl border border-gray-800 flex flex-col justify-between h-40 opacity-75">
              <span className="text-2xl">✅</span>
              <div>
                <div className="font-bold text-lg text-gray-400">Under Control</div>

@@ -34,7 +34,19 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
     setLoadingId(null);
   };
 
-  const sortedTasks = [...tasks].sort((a, b) => (a.completed === b.completed ? b.createdAt - a.createdAt : a.completed ? 1 : -1));
+  const sortedTasks = [...tasks].sort((a, b) => {
+    // 1. Completed tasks go to bottom
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    
+    // 2. Survival tasks go to top (if not completed)
+    if (!a.completed && !b.completed) {
+        if (a.category === 'survival' && b.category !== 'survival') return -1;
+        if (b.category === 'survival' && a.category !== 'survival') return 1;
+    }
+
+    // 3. Newest first
+    return b.createdAt - a.createdAt;
+  });
 
   return (
     <>
@@ -54,11 +66,12 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteT
         </div>
         <div className="flex-1 overflow-y-auto -mx-2 px-2 space-y-3 pb-10">
           {sortedTasks.map(task => (
-            <div key={task.id} className={`group bg-dad-card rounded-xl p-4 border transition-all shadow-sm ${task.completed ? 'border-transparent opacity-50' : 'border-gray-700 hover:border-gray-600'}`}>
+            <div key={task.id} className={`group bg-dad-card rounded-xl p-4 border transition-all shadow-sm ${task.completed ? 'border-transparent opacity-50' : task.category === 'survival' ? 'border-red-500/50 bg-red-900/10' : 'border-gray-700 hover:border-gray-600'}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => toggleTask(task.id)}>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${task.completed ? 'bg-dad-primary border-dad-primary' : 'border-gray-500 hover:border-dad-primary'}`}>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${task.completed ? 'bg-dad-primary border-dad-primary' : task.category === 'survival' ? 'border-red-500' : 'border-gray-500 hover:border-dad-primary'}`}>
                     {task.completed && <span className="text-white text-xs">✓</span>}
+                    {!task.completed && task.category === 'survival' && <span className="text-red-500 text-[10px]">🔥</span>}
                   </div>
                   <span className={`text-base leading-tight select-none ${task.completed ? 'line-through text-dad-secondary' : 'text-white'}`}>{task.title}</span>
                 </div>
