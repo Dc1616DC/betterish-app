@@ -34,12 +34,15 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, 
   const [showIntel, setShowIntel] = useState(false);
   const [randomWins, setRandomWins] = useState<string[]>([]);
 
-  // Randomize the Quick Wins on mount so they aren't stale
-  useEffect(() => {
+  const shuffleWins = () => {
     const allWins = CURATED_TASK_LIBRARY["Quick Wins"];
-    // Shuffle and pick 4
     const shuffled = [...allWins].sort(() => 0.5 - Math.random());
     setRandomWins(shuffled.slice(0, 4));
+  };
+
+  // Randomize the Quick Wins on mount
+  useEffect(() => {
+    shuffleWins();
   }, []);
 
   // Helper to get an emoji for a task
@@ -161,7 +164,10 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, 
       </div>
 
       <div>
-        <h3 className="text-dad-muted text-xs uppercase tracking-wider font-bold mb-4">Need Momentum?</h3>
+        <div className="flex items-center gap-2 mb-4">
+           <h3 className="text-dad-muted text-xs uppercase tracking-wider font-bold">Need Momentum?</h3>
+           <button onClick={shuffleWins} className="text-dad-muted hover:text-white transition-colors text-xs p-1 rounded hover:bg-gray-800" title="Shuffle ideas">🔄</button>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           {randomWins.map(taskTitle => (
             <button
