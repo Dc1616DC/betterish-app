@@ -10,7 +10,10 @@ interface DashboardProps {
   onQuickTaskAdd: (title: string) => void;
   onNavigateToTasks: () => void;
   onAgentReview: () => void;
+  sortByPriority: boolean;
 }
+
+const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, onQuickTaskAdd, onNavigateToTasks, onAgentReview, sortByPriority }) => {
 
 const DailyIntelModal = ({ tip, profile, onClose }: { tip: DailyTip, profile: UserProfile, onClose: () => void }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -105,7 +108,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, tasks, dailyTip, profile, 
          <button onClick={onNavigateToTasks} className="bg-dad-card hover:bg-gray-800 text-white p-5 rounded-3xl border border-gray-700 transition-all active:scale-95 text-left flex flex-col justify-between h-40 group relative overflow-hidden">
            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-6xl">📋</div>
            
-           {tasks.filter(t => !t.completed && t.category === 'survival').length > 0 ? (
+           {sortByPriority && tasks.filter(t => !t.completed && t.category === 'survival').length > 0 ? (
              <div className="w-full z-10">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-bold text-red-400 uppercase tracking-wider animate-pulse">🔥 Priority</span>

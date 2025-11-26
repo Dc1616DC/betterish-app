@@ -12,13 +12,14 @@ interface TaskListProps {
   toggleTaskExpansion: (id: string) => void;
   onAskAI: (taskTitle: string, taskId: string) => void;
   kidStage?: string;
+  sortByPriority: boolean;
+  setSortByPriority: (val: boolean) => void;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteTask, addSubTasks, toggleTaskExpansion, onAskAI, kidStage }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, toggleTask, addTask, deleteTask, addSubTasks, toggleTaskExpansion, onAskAI, kidStage, sortByPriority, setSortByPriority }) => {
   const [newItem, setNewItem] = useState('');
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [showInspiration, setShowInspiration] = useState(false);
-  const [sortByPriority, setSortByPriority] = useState(true);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();

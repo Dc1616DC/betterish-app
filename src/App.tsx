@@ -39,6 +39,17 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   
+  // Global Preferences
+  const [sortByPriority, setSortByPriority] = useState<boolean>(() => {
+    const saved = localStorage.getItem('betterish_sort_priority');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  // Save preference whenever it changes
+  useEffect(() => {
+    localStorage.setItem('betterish_sort_priority', JSON.stringify(sortByPriority));
+  }, [sortByPriority]);
+  
   // Agent Modal State
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [agentAnalysis, setAgentAnalysis] = useState<TaskAnalysis | null>(null);
@@ -285,6 +296,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
             onQuickTaskAdd={(t) => addTask(t, 'quick')}
             onNavigateToTasks={() => setView(ViewState.TASKS)}
             onAgentReview={handleAgentReview}
+            sortByPriority={sortByPriority}
           />
         );
       case ViewState.TASKS:
@@ -298,6 +310,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
             toggleTaskExpansion={toggleTaskExpansion}
             onAskAI={handleAskAI}
             kidStage={profile.kidStage}
+            sortByPriority={sortByPriority}
+            setSortByPriority={setSortByPriority}
           />
         );
       case ViewState.CHAT:
@@ -330,6 +344,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
             onQuickTaskAdd={(t) => addTask(t)}
             onNavigateToTasks={() => setView(ViewState.TASKS)}
             onAgentReview={handleAgentReview}
+            sortByPriority={sortByPriority}
           />
         );
     }
