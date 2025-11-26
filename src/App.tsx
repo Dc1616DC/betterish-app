@@ -88,6 +88,17 @@ function AuthenticatedApp({ userId }: { userId: string }) {
 
       setInitialized(true);
     }
+    
+    // Auto-cleanup: Delete tasks completed > 24 hours ago
+    if (!isLoading && tasks.length > 0) {
+      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+      const tasksToDelete = tasks.filter(t => t.completed && t.completedAt && t.completedAt < oneDayAgo);
+      
+      if (tasksToDelete.length > 0) {
+        console.log(`Cleaning up ${tasksToDelete.length} old completed tasks`);
+        tasksToDelete.forEach(t => db.transact(db.tx.tasks[t.id].delete()));
+      }
+    }
   }, [isLoading, initialized, tasks.length, statsArray.length, profileArray.length, stats.id, profile.id]);
 
   // Daily Tip Logic
@@ -139,15 +150,19 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     const isSubtask = !task;
 
     if (task && !isSubtask) {
+      const isNowCompleted = !task.completed;
       // Update stats
       const newStats = {
         ...stats,
-        tasksCompleted: task.completed ? Math.max(0, stats.tasksCompleted - 1) : stats.tasksCompleted + 1
+        tasksCompleted: isNowCompleted ? stats.tasksCompleted + 1 : Math.max(0, stats.tasksCompleted - 1)
       };
       db.transact(db.tx.userStats[stats.id].update(newStats));
 
       // Update task
-      db.transact(db.tx.tasks[id].update({ completed: !task.completed }));
+      db.transact(db.tx.tasks[id].update({ 
+        completed: isNowCompleted,
+        completedAt: isNowCompleted ? Date.now() : undefined
+      }));
     } else {
       // Handle subtask
       const parentTask = tasks.find((t: Task) => t.subtasks?.some((st: Task) => st.id === id));
@@ -238,7 +253,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const handleAgentReview = async () => {
     setIsAgentModalOpen(true);
     setIsAnalyzing(true);
-    const analysis = await analyzePriorities(tasks);
+    const activeTasks = tasks.filter(t => !t.completed);
+    const analysis = await analyzePriorities(activeTasks);
     setAgentAnalysis(analysis);
     setIsAnalyzing(false);
   };

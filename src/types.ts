@@ -10,6 +10,7 @@ export interface Task {
   title: string;
   completed: boolean;
   createdAt: number;
+  completedAt?: number;
   category: 'quick' | 'project' | 'survival';
   subtasks?: Task[];
   isBrokenDown?: boolean;
