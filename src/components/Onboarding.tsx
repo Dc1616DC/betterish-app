@@ -39,10 +39,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <div className="text-center space-y-6 animate-slide-up">
             <div className="text-6xl mb-4">🤝</div>
             <h1 className="text-3xl font-bold text-white">Welcome to Betterish.</h1>
-            <p className="text-gray-400 text-lg leading-relaxed">
-              This app is for progress, not perfection. We don't do "Pinterest Parents" here. 
-              We do "everyone is fed and the house didn't burn down." That counts as a win.
-            </p>
+            <div className="text-gray-400 text-lg leading-relaxed space-y-4">
+              <p>Because "Superdad" is a myth, but "Dad who remembered the diaper bag" is a legend.</p>
+              <p>We aren't here to optimize your life. We're here to help you survive it. Did you feed the kids? Did you keep the tiny humans safe? Did you fix that thing you said you'd fix six months ago?</p>
+              <p className="font-bold text-dad-primary">That counts. Lower your standards. Raise your game.</p>
+            </div>
             <button onClick={handleNext} className="w-full bg-dad-primary text-white py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity shadow-lg shadow-orange-900/20 mt-8">
               I can work with that 👊
             </button>
