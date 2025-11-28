@@ -59,13 +59,43 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   // Onboarding State
   const [isOnboarding, setIsOnboarding] = useState(false);
 
-  // Query all data from InstantDB
+  // Query all data from InstantDB, scoped to the current user
   const { data, isLoading, error } = db.useQuery({
-    tasks: {},
-    chatMessages: {},
-    userStats: {},
-    userProfile: {},
-    dailyTips: {},
+    tasks: {
+      $: {
+        where: {
+          userId: userId,
+        },
+      },
+    },
+    chatMessages: {
+      $: {
+        where: {
+          userId: userId,
+        },
+      },
+    },
+    userStats: {
+      $: {
+        where: {
+          userId: userId,
+        },
+      },
+    },
+    userProfile: {
+      $: {
+        where: {
+          userId: userId,
+        },
+      },
+    },
+    dailyTips: {
+      $: {
+        where: {
+          userId: userId,
+        },
+      },
+    },
   });
 
   // Extract data with defaults
@@ -84,21 +114,21 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   useEffect(() => {
     if (!isLoading && !initialized) {
       if (tasks.length === 0) {
-        // Add initial tasks with proper UUIDs
+        // Add initial tasks with proper UUIDs and scoped to user
         INITIAL_TASKS.forEach(task => {
-          const taskWithUuid = { ...task, id: uuidv4() };
+          const taskWithUuid = { ...task, id: uuidv4(), userId };
           db.transact(db.tx.tasks[taskWithUuid.id].update(taskWithUuid));
         });
       }
 
       if (statsArray.length === 0) {
-        // Initialize stats
-        db.transact(db.tx.userStats[stats.id].update(stats));
+        // Initialize stats scoped to user
+        db.transact(db.tx.userStats[stats.id].update({ ...stats, userId }));
       }
 
       if (profileArray.length === 0) {
-        // Initialize profile
-        db.transact(db.tx.userProfile[profile.id].update(profile));
+        // Initialize profile scoped to user
+        db.transact(db.tx.userProfile[profile.id].update({ ...profile, userId }));
         // If it's a new profile, trigger onboarding
         setIsOnboarding(true);
       } else if (!profile.hasOnboarded) {
@@ -150,7 +180,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       title,
       completed: false,
       createdAt: Date.now(),
-      category
+      category,
+      userId // Scoped to user
     };
     console.log('Adding task:', newTask);
     db.transact(db.tx.tasks[newTask.id].update(newTask))
@@ -207,7 +238,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       title,
       completed: false,
       createdAt: Date.now(),
-      category: 'quick'
+      category: 'quick',
+      userId
     }));
 
     db.transact(
@@ -245,7 +277,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   };
 
   const addMessage = (msg: ChatMessage) => {
-    db.transact(db.tx.chatMessages[msg.id].update(msg));
+    db.transact(db.tx.chatMessages[msg.id].update({ ...msg, userId }));
   };
 
   const updateProfile = (newProfile: UserProfile) => {

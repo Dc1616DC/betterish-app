@@ -15,6 +15,7 @@ export interface Task {
   subtasks?: Task[];
   isBrokenDown?: boolean;
   isExpanded?: boolean;
+  userId?: string;
 }
 
 export interface ChatMessage {
@@ -22,6 +23,7 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: number;
+  userId?: string;
 }
 
 export interface UserStats {
