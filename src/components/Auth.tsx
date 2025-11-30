@@ -54,10 +54,12 @@ export default function Auth() {
             <div className="space-y-4">
               <button
                 onClick={() => {
+                  console.log('Initiating OAuth with clientName: betterish');
                   const url = auth.createAuthorizationURL({
                     clientName: 'betterish',
                     redirectURL: window.location.href,
                   });
+                  console.log('Generated OAuth URL:', url);
                   window.location.href = url;
                 }}
                 className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-3 border border-gray-200"
