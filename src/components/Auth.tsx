@@ -55,7 +55,7 @@ export default function Auth() {
               <button
                 onClick={() => {
                   const url = auth.createAuthorizationURL({
-                    clientName: 'google',
+                    clientName: 'betterish',
                     redirectURL: window.location.href,
                   });
                   window.location.href = url;
