@@ -302,6 +302,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const activeTaskTitle = activeTaskId ? tasks.find(t => t.id === activeTaskId)?.title : undefined;
 
   const handleAgentReview = async () => {
+    console.log('handleAgentReview called - Opening Modal');
     setIsAgentModalOpen(true);
     setIsAnalyzing(true);
     const activeTasks = tasks.filter(t => !t.completed);
