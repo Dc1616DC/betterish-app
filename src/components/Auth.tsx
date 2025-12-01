@@ -54,9 +54,9 @@ export default function Auth() {
             <div className="space-y-4">
               <button
                 onClick={() => {
-                  console.log('Initiating OAuth with clientName: google');
+                  console.log('Initiating OAuth with clientName: web');
                   const url = auth.createAuthorizationURL({
-                    clientName: 'google',
+                    clientName: 'web',
                     redirectURL: window.location.href,
                   });
                   console.log('Generated OAuth URL:', url);
